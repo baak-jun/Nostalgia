@@ -12,7 +12,11 @@ import 'package:nostalgia/features/sync/presentation/metadata_sync_dialogs.dart'
 import 'package:nostalgia/features/tags/presentation/widgets/tag_editor_dialog.dart';
 import 'package:photo_manager/photo_manager.dart';
 import 'package:nostalgia/core/utils/tag_rules.dart';
-enum SortOrder { oldestFirst, newestFirst } enum _SwipeAction { keep, defer, skip }
+enum SortOrder { oldestFirst, newestFirst }
+
+enum _SwipeAction { keep, defer, skip }
+
+enum _HomeMenuAction { settings, metadataSync, reload }
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
   @override
@@ -29,6 +33,7 @@ class _HomeScreenState extends State<HomeScreen> {
   SortOrder _sortOrder = SortOrder.oldestFirst;
   final Set<String> _keptIds = <String>{};
   final Set<String> _deferredIds = <String>{};
+  final Set<String> _deletedIds = <String>{};
   final Set<String> _skippedIds = <String>{};
   final Map<String, Set<String>> _customTagsByPhotoId = <String, Set<String>>{};
   @override
@@ -52,6 +57,11 @@ class _HomeScreenState extends State<HomeScreen> {
         ..clear()
         ..addAll(persisted.deferredIds.where(loadedIds.contains))
         ..removeWhere(_keptIds.contains);
+      _deletedIds
+        ..clear()
+        ..addAll(persisted.deletedIds.where(loadedIds.contains));
+      _keptIds.removeWhere(_deletedIds.contains);
+      _deferredIds.removeWhere(_deletedIds.contains);
       _skippedIds.clear();
       _customTagsByPhotoId
         ..clear()
@@ -65,7 +75,12 @@ class _HomeScreenState extends State<HomeScreen> {
   }
   List<PhotoItem> get _remainingSorted {
     final remaining = _photos
-        .where((item) => !_keptIds.contains(item.id) && !_deferredIds.contains(item.id))
+        .where(
+          (item) =>
+              !_keptIds.contains(item.id) &&
+              !_deferredIds.contains(item.id) &&
+              !_deletedIds.contains(item.id),
+        )
         .map(_applyMutations)
         .toList();
     remaining.sort((a, b) {
@@ -81,14 +96,15 @@ class _HomeScreenState extends State<HomeScreen> {
     return remaining;
   }
   List<PhotoItem> get _keptPhotos => _photos
-      .where((item) => _keptIds.contains(item.id))
+      .where((item) => _keptIds.contains(item.id) && !_deletedIds.contains(item.id))
       .map((item) => _applyMutations(item, inReviewBin: false))
       .toList();
   List<PhotoItem> get _deferredPhotos => _photos
-      .where((item) => _deferredIds.contains(item.id))
+      .where((item) => _deferredIds.contains(item.id) && !_deletedIds.contains(item.id))
       .map((item) => _applyMutations(item, inReviewBin: true))
       .toList();
-  List<PhotoItem> get _allPhotosWithMutations => _photos.map(_applyMutations).toList();
+  List<PhotoItem> get _allPhotosWithMutations =>
+      _photos.where((item) => !_deletedIds.contains(item.id)).map(_applyMutations).toList();
   PhotoItem _applyMutations(PhotoItem item, {bool? inReviewBin}) {
     final mergedTags =
         _customTagsByPhotoId[item.id] ??
@@ -103,10 +119,12 @@ class _HomeScreenState extends State<HomeScreen> {
     if (current == null) return;
     setState(() {
       if (action == _SwipeAction.keep) {
+        _deletedIds.remove(current.id);
         _keptIds.add(current.id);
         _deferredIds.remove(current.id);
         _skippedIds.remove(current.id);
       } else if (action == _SwipeAction.defer) {
+        _deletedIds.remove(current.id);
         _deferredIds.add(current.id);
         _keptIds.remove(current.id);
         _skippedIds.remove(current.id);
@@ -134,20 +152,74 @@ class _HomeScreenState extends State<HomeScreen> {
       builder: (context) => TagEditorDialog(initialTags: initialTags),
     );
     if (!mounted || updatedTags == null) return;
+    var shouldRecoverFromDeferred = recoverFromDeferred;
+    if (recoverFromDeferred && updatedTags.isNotEmpty) {
+      final keepConfirmed = await showDialog<bool>(
+        context: context,
+        builder: (dialogContext) => AlertDialog(
+          title: const Text('이미지를 보관하시겠습니까?'),
+          content: const Text('태그가 적용되었습니다. 보류함에서 보관함으로 이동할까요?'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+              child: const Text('아니오'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(dialogContext).pop(true),
+              child: const Text('보관'),
+            ),
+          ],
+        ),
+      );
+      if (!mounted) return;
+      shouldRecoverFromDeferred = keepConfirmed ?? false;
+    }
     setState(() {
       _customTagsByPhotoId[item.id] = updatedTags;
+      _deletedIds.remove(item.id);
       if (forceKeepAfterSave) {
         _keptIds.add(item.id);
         _deferredIds.remove(item.id);
         _skippedIds.remove(item.id);
       }
-      if (recoverFromDeferred) {
+      if (shouldRecoverFromDeferred) {
         _deferredIds.remove(item.id);
         _keptIds.add(item.id);
       }
     });
     unawaited(_savePersistedState());
   }
+  Future<void> _restoreAllDeferredToArchive() async {
+    if (_deferredIds.isEmpty) return;
+    setState(() {
+      _keptIds.addAll(_deferredIds);
+      _deferredIds.clear();
+    });
+    await _savePersistedState();
+  }
+  Future<void> _restoreDeferredByIds(Set<String> ids) async {
+    if (ids.isEmpty) return;
+    setState(() {
+      _deferredIds.removeWhere(ids.contains);
+      _keptIds.addAll(ids);
+      _deletedIds.removeWhere(ids.contains);
+    });
+    await _savePersistedState();
+  }
+  Future<void> _deleteDeferredByIds(Set<String> ids) async {
+    if (ids.isEmpty) return;
+    setState(() {
+      _deletedIds.addAll(ids);
+      _deferredIds.removeWhere(ids.contains);
+      _keptIds.removeWhere(ids.contains);
+      _skippedIds.removeWhere(ids.contains);
+      for (final id in ids) {
+        _customTagsByPhotoId.remove(id);
+      }
+    });
+    await _savePersistedState();
+  }
+  Future<void> _deleteAllDeferred() => _deleteDeferredByIds({..._deferredIds});
   Future<void> _openCollections() async {
     await Navigator.of(context).push(
       MaterialPageRoute<void>(
@@ -161,6 +233,10 @@ class _HomeScreenState extends State<HomeScreen> {
               unawaited(_editTagsForPhoto(item, recoverFromDeferred: false, forceKeepAfterSave: false)),
           onDeferredPhotoTap: (item) =>
               unawaited(_editTagsForPhoto(item, recoverFromDeferred: true, forceKeepAfterSave: false)),
+          onRestoreAllDeferred: () => unawaited(_restoreAllDeferredToArchive()),
+          onDeleteAllDeferred: () => unawaited(_deleteAllDeferred()),
+          onRestoreSelectedDeferred: (ids) => unawaited(_restoreDeferredByIds(ids)),
+          onDeleteSelectedDeferred: (ids) => unawaited(_deleteDeferredByIds(ids)),
         ),
       ),
     );
@@ -171,6 +247,19 @@ class _HomeScreenState extends State<HomeScreen> {
     );
     if (!mounted || updated == null) return;
     setState(() => _settings = updated);
+  }
+  Future<void> _onMenuSelected(_HomeMenuAction action) async {
+    switch (action) {
+      case _HomeMenuAction.settings:
+        await _openSettings();
+        break;
+      case _HomeMenuAction.metadataSync:
+        await _runMetadataSync();
+        break;
+      case _HomeMenuAction.reload:
+        await _loadPhotos();
+        break;
+    }
   }
   List<PhotoItem> _metadataSyncCandidates() {
     return _keptPhotos.where((item) => item.tags.isNotEmpty).toList();
@@ -196,6 +285,7 @@ class _HomeScreenState extends State<HomeScreen> {
     return _stateStore.save(
       keptIds: _keptIds,
       deferredIds: _deferredIds,
+      deletedIds: _deletedIds,
       customTagsByPhotoId: _customTagsByPhotoId,
     );
   }
@@ -209,25 +299,25 @@ class _HomeScreenState extends State<HomeScreen> {
       appBar: AppBar(
         title: const Text('Nostalgia'),
         actions: [
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
-            child: FilledButton.tonalIcon(
-              onPressed: _openCollections,
-              icon: const Icon(Icons.dashboard_customize_outlined, size: 18),
-              label: const Text('화면 이동'),
-              style: FilledButton.styleFrom(
-                visualDensity: VisualDensity.compact,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          PopupMenuButton<_HomeMenuAction>(
+            tooltip: '메뉴',
+            icon: const Icon(Icons.menu),
+            onSelected: (action) => unawaited(_onMenuSelected(action)),
+            itemBuilder: (context) => const [
+              PopupMenuItem<_HomeMenuAction>(
+                value: _HomeMenuAction.settings,
+                child: Text('설정'),
               ),
-            ),
+              PopupMenuItem<_HomeMenuAction>(
+                value: _HomeMenuAction.metadataSync,
+                child: Text('메타 동기화'),
+              ),
+              PopupMenuItem<_HomeMenuAction>(
+                value: _HomeMenuAction.reload,
+                child: Text('다시 불러오기'),
+              ),
+            ],
           ),
-          IconButton(onPressed: _openSettings, icon: const Icon(Icons.tune), tooltip: '설정'),
-          IconButton(
-            onPressed: _runMetadataSync,
-            icon: const Icon(Icons.file_upload_outlined),
-            tooltip: '메타 동기화',
-          ),
-          IconButton(onPressed: _loadPhotos, icon: const Icon(Icons.refresh), tooltip: '다시 불러오기'),
         ],
       ),
       body: _isLoading
@@ -250,12 +340,33 @@ class _HomeScreenState extends State<HomeScreen> {
                     runSpacing: 8,
                     children: [
                       Text('진행: $processedCount / $totalCount', style: Theme.of(context).textTheme.titleMedium),
+                      FilledButton.tonalIcon(
+                        onPressed: _openCollections,
+                        icon: const Icon(Icons.dashboard_customize_outlined, size: 18),
+                        label: const Text('화면 이동'),
+                        style: FilledButton.styleFrom(
+                          visualDensity: VisualDensity.compact,
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        ),
+                      ),
                       SegmentedButton<SortOrder>(
                         segments: const [
                           ButtonSegment<SortOrder>(value: SortOrder.oldestFirst, label: Text('오래된순')),
                           ButtonSegment<SortOrder>(value: SortOrder.newestFirst, label: Text('최신순')),
                         ],
                         selected: <SortOrder>{_sortOrder},
+                        style: ButtonStyle(
+                          visualDensity: VisualDensity.compact,
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                          textStyle: MaterialStatePropertyAll<TextStyle>(
+                            Theme.of(context).textTheme.labelSmall ?? const TextStyle(fontSize: 12),
+                          ),
+                          padding: const MaterialStatePropertyAll<EdgeInsets>(
+                            EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                          ),
+                        ),
                         onSelectionChanged: (selection) => setState(() => _sortOrder = selection.first),
                       ),
                     ],

@@ -18,12 +18,10 @@ class ArchiveScreen extends StatefulWidget {
 class _ArchiveScreenState extends State<ArchiveScreen> {
   ArchiveFilter _filter = ArchiveFilter.all;
 
-  List<PhotoItem> get _filteredPhotos {
-    if (_filter == ArchiveFilter.all) {
-      return widget.photos;
-    }
-    return widget.photos.where((item) => !hasUserVisibleTags(item.tags)).toList();
-  }
+  List<PhotoItem> get _allPhotos => widget.photos.toList();
+  List<PhotoItem> get _untaggedPhotos =>
+      widget.photos.where((item) => !hasUserVisibleTags(item.tags)).toList();
+  List<PhotoItem> get _filteredPhotos => _filter == ArchiveFilter.all ? _allPhotos : _untaggedPhotos;
 
   @override
   Widget build(BuildContext context) {
@@ -31,7 +29,9 @@ class _ArchiveScreenState extends State<ArchiveScreen> {
       return const Center(child: Text('보관함이 비어 있습니다.'));
     }
 
-    final visiblePhotos = _filteredPhotos;
+    final allPhotos = _allPhotos;
+    final untaggedPhotos = _untaggedPhotos;
+    final visiblePhotos = _filter == ArchiveFilter.all ? allPhotos : untaggedPhotos;
 
     return Column(
       children: [
@@ -39,23 +39,21 @@ class _ArchiveScreenState extends State<ArchiveScreen> {
           padding: const EdgeInsets.fromLTRB(12, 12, 12, 0),
           child: Align(
             alignment: Alignment.centerLeft,
-            child: SegmentedButton<ArchiveFilter>(
-              segments: const [
-                ButtonSegment<ArchiveFilter>(
-                  value: ArchiveFilter.all,
-                  label: Text('전체'),
+            child: Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                ChoiceChip(
+                  label: Text('전체 (${allPhotos.length})'),
+                  selected: _filter == ArchiveFilter.all,
+                  onSelected: (_) => setState(() => _filter = ArchiveFilter.all),
                 ),
-                ButtonSegment<ArchiveFilter>(
-                  value: ArchiveFilter.untagged,
-                  label: Text('미태그'),
+                ChoiceChip(
+                  label: Text('미태그 (${untaggedPhotos.length})'),
+                  selected: _filter == ArchiveFilter.untagged,
+                  onSelected: (_) => setState(() => _filter = ArchiveFilter.untagged),
                 ),
               ],
-              selected: <ArchiveFilter>{_filter},
-              onSelectionChanged: (selection) {
-                setState(() {
-                  _filter = selection.first;
-                });
-              },
             ),
           ),
         ),

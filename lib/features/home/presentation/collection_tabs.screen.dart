@@ -14,6 +14,10 @@ class CollectionTabsScreen extends StatelessWidget {
     this.onArchivePhotoTap,
     this.onDeferredPhotoTap,
     this.onFolderPhotoTap,
+    this.onRestoreAllDeferred,
+    this.onDeleteAllDeferred,
+    this.onRestoreSelectedDeferred,
+    this.onDeleteSelectedDeferred,
   });
 
   final List<PhotoItem> allPhotos;
@@ -22,6 +26,10 @@ class CollectionTabsScreen extends StatelessWidget {
   final ValueChanged<PhotoItem>? onArchivePhotoTap;
   final ValueChanged<PhotoItem>? onDeferredPhotoTap;
   final ValueChanged<PhotoItem>? onFolderPhotoTap;
+  final VoidCallback? onRestoreAllDeferred;
+  final VoidCallback? onDeleteAllDeferred;
+  final ValueChanged<Set<String>>? onRestoreSelectedDeferred;
+  final ValueChanged<Set<String>>? onDeleteSelectedDeferred;
 
   @override
   Widget build(BuildContext context) {
@@ -44,7 +52,14 @@ class CollectionTabsScreen extends StatelessWidget {
           children: [
             FolderOverviewScreen(photos: allPhotos, onPhotoTap: onFolderPhotoTap),
             ArchiveScreen(photos: keptPhotos, onPhotoTap: onArchivePhotoTap),
-            ReviewBinScreen(photos: deferredPhotos, onPhotoTap: onDeferredPhotoTap),
+            ReviewBinScreen(
+              photos: deferredPhotos,
+              onPhotoTap: onDeferredPhotoTap,
+              onRestoreAll: onRestoreAllDeferred,
+              onDeleteAll: onDeleteAllDeferred,
+              onRestoreSelected: onRestoreSelectedDeferred,
+              onDeleteSelected: onDeleteSelectedDeferred,
+            ),
             TagSearchScreen(photos: allPhotos),
           ],
         ),
