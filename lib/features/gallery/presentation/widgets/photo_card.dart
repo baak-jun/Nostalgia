@@ -6,10 +6,11 @@ import 'package:nostalgia/features/gallery/domain/photo_item.dart';
 import 'package:photo_manager/photo_manager.dart';
 
 class PhotoCard extends StatelessWidget {
-  const PhotoCard({super.key, required this.item, this.onTap});
+  const PhotoCard({super.key, required this.item, this.onTap, this.onLongPress});
 
   final PhotoItem item;
   final VoidCallback? onTap;
+  final VoidCallback? onLongPress;
 
   @override
   Widget build(BuildContext context) {
@@ -17,6 +18,7 @@ class PhotoCard extends StatelessWidget {
       clipBehavior: Clip.antiAlias,
       child: InkWell(
         onTap: onTap,
+        onLongPress: onLongPress,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [

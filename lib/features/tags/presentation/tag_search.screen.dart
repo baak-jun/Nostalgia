@@ -18,12 +18,7 @@ class _TagSearchScreenState extends State<TagSearchScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final tokens = query
-        .toLowerCase()
-        .split(',')
-        .map((value) => value.trim())
-        .where((value) => value.isNotEmpty)
-        .toList();
+    final tokens = _currentTokens().toList();
 
     final suggestedTags = _suggestedTags();
 
@@ -55,9 +50,24 @@ class _TagSearchScreenState extends State<TagSearchScreen> {
               runSpacing: 8,
               children: suggestedTags
                   .map(
-                    (tag) => ActionChip(
+                    (tag) => FilterChip(
                       label: Text('#$tag'),
-                      onPressed: () => _applySuggestedTag(tag),
+                      selected: tokens.contains(tag),
+                      showCheckmark: false,
+                      avatar: tokens.contains(tag) ? const Icon(Icons.bolt, size: 16) : null,
+                      selectedColor: Theme.of(context).colorScheme.primaryContainer,
+                      labelStyle: TextStyle(
+                        color: tokens.contains(tag)
+                            ? Theme.of(context).colorScheme.onPrimaryContainer
+                            : Theme.of(context).colorScheme.onSurface,
+                        fontWeight: tokens.contains(tag) ? FontWeight.w700 : FontWeight.w400,
+                      ),
+                      side: BorderSide(
+                        color: tokens.contains(tag)
+                            ? Theme.of(context).colorScheme.primary
+                            : Theme.of(context).colorScheme.outlineVariant,
+                      ),
+                      onSelected: (_) => _toggleSuggestedTag(tag),
                     ),
                   )
                   .toList(),
@@ -102,19 +112,27 @@ class _TagSearchScreenState extends State<TagSearchScreen> {
     return entries.take(12).map((entry) => entry.key).toList();
   }
 
-  void _applySuggestedTag(String tag) {
-    final currentTokens = query
+  Set<String> _currentTokens() {
+    return query
         .toLowerCase()
         .split(',')
         .map((value) => value.trim())
         .where((value) => value.isNotEmpty)
         .toSet();
-    if (currentTokens.contains(tag)) {
-      return;
-    }
+  }
 
-    currentTokens.add(tag);
-    final nextQuery = currentTokens.join(', ');
+  void _toggleSuggestedTag(String tag) {
+    final currentTokens = _currentTokens();
+    if (currentTokens.contains(tag)) {
+      currentTokens.remove(tag);
+    } else {
+      currentTokens.add(tag);
+    }
+    final nextQuery = currentTokens.toList()..sort();
+    _setQuery(nextQuery.join(', '));
+  }
+
+  void _setQuery(String nextQuery) {
     setState(() {
       query = nextQuery;
       controller.text = nextQuery;

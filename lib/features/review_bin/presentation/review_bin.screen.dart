@@ -17,7 +17,7 @@ class ReviewBinScreen extends StatefulWidget {
   });
 
   final List<PhotoItem> photos;
-  final ValueChanged<PhotoItem>? onPhotoTap;
+  final Future<PhotoItem?> Function(PhotoItem)? onPhotoTap;
   final VoidCallback? onRestoreAll;
   final VoidCallback? onDeleteAll;
   final ValueChanged<Set<String>>? onRestoreSelected;
@@ -230,7 +230,15 @@ class _ReviewBinScreenState extends State<ReviewBinScreen> {
                             item: item,
                             onTap: _isSelectionMode
                                 ? () => _toggleSelected(item.id)
-                                : (widget.onPhotoTap == null ? null : () => widget.onPhotoTap!(item)),
+                                : (widget.onPhotoTap == null
+                                      ? null
+                                      : () async {
+                                          final movedToArchive = await widget.onPhotoTap!(item);
+                                          if (!mounted || movedToArchive == null) return;
+                                          setState(() {
+                                            _localHiddenIds.add(item.id);
+                                          });
+                                        }),
                           ),
                         ),
                         if (_isSelectionMode)

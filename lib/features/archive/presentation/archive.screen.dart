@@ -5,11 +5,14 @@ import 'package:nostalgia/features/gallery/presentation/widgets/photo_card.dart'
 
 enum ArchiveFilter { all, untagged }
 
+enum _ArchiveItemMenuAction { moveToReviewBin }
+
 class ArchiveScreen extends StatefulWidget {
-  const ArchiveScreen({super.key, required this.photos, this.onPhotoTap});
+  const ArchiveScreen({super.key, required this.photos, this.onPhotoTap, this.onPhotoLongPress});
 
   final List<PhotoItem> photos;
   final ValueChanged<PhotoItem>? onPhotoTap;
+  final ValueChanged<PhotoItem>? onPhotoLongPress;
 
   @override
   State<ArchiveScreen> createState() => _ArchiveScreenState();
@@ -17,11 +20,41 @@ class ArchiveScreen extends StatefulWidget {
 
 class _ArchiveScreenState extends State<ArchiveScreen> {
   ArchiveFilter _filter = ArchiveFilter.all;
+  final Set<String> _locallyHiddenIds = <String>{};
 
-  List<PhotoItem> get _allPhotos => widget.photos.toList();
+  List<PhotoItem> get _allPhotos =>
+      widget.photos.where((item) => !_locallyHiddenIds.contains(item.id)).toList();
   List<PhotoItem> get _untaggedPhotos =>
-      widget.photos.where((item) => !hasUserVisibleTags(item.tags)).toList();
+      _allPhotos.where((item) => !hasUserVisibleTags(item.tags)).toList();
   List<PhotoItem> get _filteredPhotos => _filter == ArchiveFilter.all ? _allPhotos : _untaggedPhotos;
+
+  Future<void> _showItemMenu(PhotoItem item) async {
+    if (widget.onPhotoLongPress == null) return;
+    final action = await showModalBottomSheet<_ArchiveItemMenuAction>(
+      context: context,
+      builder: (context) {
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                leading: const Icon(Icons.move_down_outlined),
+                title: const Text('보류함으로 이동'),
+                onTap: () => Navigator.of(context).pop(_ArchiveItemMenuAction.moveToReviewBin),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+    if (!mounted || action == null) return;
+    if (action == _ArchiveItemMenuAction.moveToReviewBin) {
+      setState(() {
+        _locallyHiddenIds.add(item.id);
+      });
+      widget.onPhotoLongPress!(item);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -75,6 +108,7 @@ class _ArchiveScreenState extends State<ArchiveScreen> {
                     return PhotoCard(
                       item: item,
                       onTap: widget.onPhotoTap == null ? null : () => widget.onPhotoTap!(item),
+                      onLongPress: widget.onPhotoLongPress == null ? null : () => _showItemMenu(item),
                     );
                   },
                 ),

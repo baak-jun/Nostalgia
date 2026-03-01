@@ -139,7 +139,7 @@ class _HomeScreenState extends State<HomeScreen> {
     if (current == null) return;
     await _editTagsForPhoto(current, recoverFromDeferred: false, forceKeepAfterSave: true);
   }
-  Future<void> _editTagsForPhoto(
+  Future<bool> _editTagsForPhoto(
     PhotoItem item, {
     required bool recoverFromDeferred,
     required bool forceKeepAfterSave,
@@ -151,7 +151,7 @@ class _HomeScreenState extends State<HomeScreen> {
       context: context,
       builder: (context) => TagEditorDialog(initialTags: initialTags),
     );
-    if (!mounted || updatedTags == null) return;
+    if (!mounted || updatedTags == null) return false;
     var shouldRecoverFromDeferred = recoverFromDeferred;
     if (recoverFromDeferred && updatedTags.isNotEmpty) {
       final keepConfirmed = await showDialog<bool>(
@@ -171,7 +171,7 @@ class _HomeScreenState extends State<HomeScreen> {
           ],
         ),
       );
-      if (!mounted) return;
+      if (!mounted) return false;
       shouldRecoverFromDeferred = keepConfirmed ?? false;
     }
     setState(() {
@@ -187,13 +187,22 @@ class _HomeScreenState extends State<HomeScreen> {
         _keptIds.add(item.id);
       }
     });
-    unawaited(_savePersistedState());
+    await _savePersistedState();
+    return forceKeepAfterSave || shouldRecoverFromDeferred;
   }
   Future<void> _restoreAllDeferredToArchive() async {
     if (_deferredIds.isEmpty) return;
     setState(() {
       _keptIds.addAll(_deferredIds);
       _deferredIds.clear();
+    });
+    await _savePersistedState();
+  }
+  Future<void> _moveKeptToDeferred(PhotoItem item) async {
+    setState(() {
+      _keptIds.remove(item.id);
+      _deferredIds.add(item.id);
+      _deletedIds.remove(item.id);
     });
     await _savePersistedState();
   }
@@ -220,6 +229,17 @@ class _HomeScreenState extends State<HomeScreen> {
     await _savePersistedState();
   }
   Future<void> _deleteAllDeferred() => _deleteDeferredByIds({..._deferredIds});
+
+  Future<PhotoItem?> _editDeferredPhotoFromCollection(PhotoItem item) async {
+    final moved = await _editTagsForPhoto(
+      item,
+      recoverFromDeferred: true,
+      forceKeepAfterSave: false,
+    );
+    if (!moved) return null;
+    return _applyMutations(item, inReviewBin: false);
+  }
+
   Future<void> _openCollections() async {
     await Navigator.of(context).push(
       MaterialPageRoute<void>(
@@ -229,10 +249,10 @@ class _HomeScreenState extends State<HomeScreen> {
           deferredPhotos: _deferredPhotos,
           onArchivePhotoTap: (item) =>
               unawaited(_editTagsForPhoto(item, recoverFromDeferred: false, forceKeepAfterSave: false)),
+          onArchivePhotoLongPress: (item) => unawaited(_moveKeptToDeferred(item)),
           onFolderPhotoTap: (item) =>
               unawaited(_editTagsForPhoto(item, recoverFromDeferred: false, forceKeepAfterSave: false)),
-          onDeferredPhotoTap: (item) =>
-              unawaited(_editTagsForPhoto(item, recoverFromDeferred: true, forceKeepAfterSave: false)),
+          onDeferredPhotoTap: _editDeferredPhotoFromCollection,
           onRestoreAllDeferred: () => unawaited(_restoreAllDeferredToArchive()),
           onDeleteAllDeferred: () => unawaited(_deleteAllDeferred()),
           onRestoreSelectedDeferred: (ids) => unawaited(_restoreDeferredByIds(ids)),

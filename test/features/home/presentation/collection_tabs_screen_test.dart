@@ -50,5 +50,47 @@ void main() {
 
     expect(find.text('검토함이 비어 있습니다.'), findsOneWidget);
   });
+
+  testWidgets('deferred photo moves to archive with updated tags after save restore', (tester) async {
+    const deferred = PhotoItem(
+      id: 'deferred-1',
+      title: 'deferred-photo',
+      dateLabel: '2026-02-28',
+      sizeBytes: 2400,
+      tags: <String>['trip'],
+      asset: null,
+      isScreenshot: false,
+      inReviewBin: true,
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: CollectionTabsScreen(
+          allPhotos: const <PhotoItem>[deferred],
+          keptPhotos: const <PhotoItem>[],
+          deferredPhotos: const <PhotoItem>[deferred],
+          onDeferredPhotoTap: (item) async => item.copyWith(
+            inReviewBin: false,
+            tags: const <String>['trip', 'family'],
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('보류함'));
+    await tester.pumpAndSettle();
+    expect(find.text('deferred-photo'), findsOneWidget);
+
+    await tester.tap(find.text('deferred-photo'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('검토함이 비어 있습니다.'), findsOneWidget);
+
+    await tester.tap(find.text('보관함'));
+    await tester.pumpAndSettle();
+    expect(find.text('deferred-photo'), findsOneWidget);
+    expect(find.text('#family'), findsOneWidget);
+  });
 }
 
