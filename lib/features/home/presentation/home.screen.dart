@@ -150,9 +150,17 @@ class _HomeScreenState extends State<HomeScreen> {
     final initialTags =
         _customTagsByPhotoId[item.id] ??
         <String>{...item.tags.map(_normalizeTag)}..removeWhere((tag) => tag.isEmpty);
+    final allAvailableTags = _photos
+        .expand((p) => visibleTags(_customTagsByPhotoId[p.id] ?? p.tags))
+        .map(_normalizeTag)
+        .where((tag) => tag.isNotEmpty)
+        .toSet();
     final updatedTags = await showDialog<Set<String>>(
       context: context,
-      builder: (context) => TagEditorDialog(initialTags: initialTags),
+      builder: (context) => TagEditorDialog(
+        initialTags: initialTags,
+        suggestedTags: allAvailableTags.difference(initialTags),
+      ),
     );
     if (!mounted || updatedTags == null) return false;
     var shouldRecoverFromDeferred = recoverFromDeferred;

@@ -117,10 +117,18 @@ class _CloudDriveScreenState extends State<CloudDriveScreen> with SingleTickerPr
     if (remaining.isEmpty) return;
     final current = remaining.first;
     final currentTags = (_tagsByFileId[current.id] ?? current.tags).toSet();
+    final allCloudTags = _cloudPhotos
+        .expand((p) => _tagsByFileId[p.id] ?? p.tags)
+        .map((t) => t.trim().toLowerCase())
+        .where((t) => t.isNotEmpty)
+        .toSet();
 
     final updatedTags = await showDialog<Set<String>>(
       context: context,
-      builder: (_) => TagEditorDialog(initialTags: currentTags),
+      builder: (_) => TagEditorDialog(
+        initialTags: currentTags,
+        suggestedTags: allCloudTags.difference(currentTags),
+      ),
     );
 
     if (!mounted || updatedTags == null) return;

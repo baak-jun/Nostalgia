@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:nostalgia/features/tags/presentation/widgets/tag_editor_dialog.dart';
 
@@ -92,5 +92,48 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byType(AlertDialog), findsNothing);
+  });
+
+  testWidgets('tapping suggested chip adds it to active tags', (tester) async {
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: Scaffold(
+          body: TagEditorDialog(
+            initialTags: <String>{'receipt'},
+            suggestedTags: <String>{'gallery', 'snack'},
+          ),
+        ),
+      ),
+    );
+
+    expect(find.text('#receipt'), findsOneWidget);
+    expect(find.text('gallery'), findsOneWidget);
+    expect(find.text('snack'), findsOneWidget);
+
+    // Tap suggested chip
+    await tester.tap(find.text('gallery'));
+    await tester.pumpAndSettle();
+
+    // gallery should now be active with #
+    expect(find.text('#gallery'), findsOneWidget);
+    // and removed from suggestions
+    expect(find.widgetWithText(ActionChip, 'gallery'), findsNothing);
+  });
+
+  testWidgets('typing tag with leading # strips prefix cleanly', (tester) async {
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: Scaffold(
+          body: TagEditorDialog(initialTags: <String>{}),
+        ),
+      ),
+    );
+
+    await tester.enterText(find.byType(TextField), '#cafe');
+    await tester.testTextInput.receiveAction(TextInputAction.done);
+    await tester.pumpAndSettle();
+
+    expect(find.text('#cafe'), findsOneWidget);
+    expect(find.text('##cafe'), findsNothing);
   });
 }
