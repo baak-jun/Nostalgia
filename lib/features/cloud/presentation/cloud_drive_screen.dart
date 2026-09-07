@@ -6,6 +6,7 @@ import 'package:nostalgia/features/gallery/presentation/widgets/photo_card.dart'
 import 'package:nostalgia/features/home/presentation/widgets/swipe_classification_card.dart';
 import 'package:nostalgia/features/settings/domain/app_settings.dart';
 import 'package:nostalgia/features/tags/presentation/widgets/tag_editor_dialog.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class CloudDriveScreen extends StatefulWidget {
   const CloudDriveScreen({
@@ -141,32 +142,92 @@ class _CloudDriveScreenState extends State<CloudDriveScreen> with SingleTickerPr
     await widget.repository.updateTags(_currentType, current.id, updatedTags.toList());
   }
 
+  Future<void> _openOAuthTokenPage(CloudDriveType type) async {
+    final url = type == CloudDriveType.googleDrive
+        ? 'https://developers.google.com/oauthplayground/#step1&apisSelect=https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fdrive.readonly%2Chttps%3A%2F%2Fwww.googleapis.com%2Fauth%2Fdrive.file'
+        : 'https://developer.microsoft.com/graph/graph-explorer';
+    final uri = Uri.parse(url);
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    }
+  }
+
   Future<void> _connectAccount() async {
     final tokenController = TextEditingController();
     final token = await showDialog<String>(
       context: context,
       builder: (ctx) => AlertDialog(
         title: Text('${_currentType.displayName} 연결'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('${_currentType.displayName} 계정을 연결하여 클라우드 이미지를 가져옵니다.'),
-            const SizedBox(height: 12),
-            TextField(
-              controller: tokenController,
-              decoration: const InputDecoration(
-                labelText: 'OAuth Access Token (선택)',
-                hintText: '비워두면 데모 모드로 연결됩니다',
-                border: OutlineInputBorder(),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        content: SizedBox(
+          width: 420,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(
+                '${_currentType.displayName} 계정으로 로그인하여 사진을 가져옵니다.',
+                style: const TextStyle(fontSize: 14),
               ),
-            ),
-          ],
+              const SizedBox(height: 12),
+              OutlinedButton.icon(
+                icon: const Icon(Icons.open_in_new, size: 18),
+                label: Text(
+                  _currentType == CloudDriveType.googleDrive
+                      ? '구글 로그인 & 토큰 발급 페이지 열기'
+                      : 'MS 로그인 & 토큰 발급 페이지 열기',
+                ),
+                style: OutlinedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+                onPressed: () => _openOAuthTokenPage(_currentType),
+              ),
+              const SizedBox(height: 10),
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: Theme.of(ctx).colorScheme.surfaceContainerHighest.withValues(alpha: 0.6),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '⚡ 30초 발급 방법',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 12,
+                        color: Theme.of(ctx).colorScheme.primary,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      _currentType == CloudDriveType.googleDrive
+                          ? '1. 위 버튼 클릭 시 구글 OAuth Playground가 열립니다.\n2. [Authorize APIs] 클릭 후 본인 구글 계정 로그인\n3. [Exchange auth code] 클릭 후 나오는 Access Token 복사'
+                          : '1. 위 버튼 클릭 시 Graph Explorer가 열립니다.\n2. MS 계정 로그인 후 [Access token] 탭 클릭\n3. 표시된 토큰 복사 후 아래 붙여넣기',
+                      style: const TextStyle(fontSize: 12, height: 1.4),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 14),
+              TextField(
+                controller: tokenController,
+                decoration: InputDecoration(
+                  labelText: 'Access Token 붙여넣기',
+                  hintText: '비워두면 데모 드라이브로 연결됩니다',
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                ),
+              ),
+            ],
+          ),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(''),
-            child: const Text('데모 모드로 연결'),
+            child: const Text('데모 모드로 체험하기'),
           ),
           FilledButton(
             onPressed: () => Navigator.of(ctx).pop(tokenController.text.trim()),
