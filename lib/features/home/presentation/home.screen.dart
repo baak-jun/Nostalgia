@@ -1,6 +1,8 @@
 import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:nostalgia/features/gallery/data/device_photo_loader.dart';
+import 'package:nostalgia/features/gallery/data/web_photo_importer.dart';
 import 'package:nostalgia/features/gallery/domain/photo_item.dart';
 import 'package:nostalgia/features/home/data/home_state_store.dart';
 import 'package:nostalgia/features/home/presentation/collection_tabs.screen.dart';
@@ -18,7 +20,7 @@ enum SortOrder { oldestFirst, newestFirst }
 
 enum _SwipeAction { keep, defer, skip }
 
-enum _HomeMenuAction { settings, metadataSync, cloudDrive, reload }
+enum _HomeMenuAction { settings, metadataSync, cloudDrive, importWebPhotos, reload }
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
   @override
@@ -28,6 +30,7 @@ class _HomeScreenState extends State<HomeScreen> {
   final DevicePhotoLoader _loader = const DevicePhotoLoader();
   final HomeStateStore _stateStore = const HomeStateStore();
   final MetadataSyncService _metadataSyncService = const MetadataSyncService();
+  final WebPhotoImporter _webPhotoImporter = const WebPhotoImporter();
   final CloudDriveRepository _cloudRepository = CloudDriveRepository();
   bool _isLoading = true;
   bool _isPermissionDenied = false;
@@ -279,10 +282,27 @@ class _HomeScreenState extends State<HomeScreen> {
     if (!mounted || updated == null) return;
     setState(() => _settings = updated);
   }
+  Future<void> _importWebPhotos() async {
+    final picked = await _webPhotoImporter.pickPhotos();
+    if (picked.isEmpty || !mounted) return;
+    setState(() {
+      _photos = [...picked, ..._photos];
+    });
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('${picked.length}장의 사진(iCloud/웹/로컬)을 불러왔습니다.'),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
+
   Future<void> _onMenuSelected(_HomeMenuAction action) async {
     switch (action) {
       case _HomeMenuAction.settings:
         await _openSettings();
+        break;
+      case _HomeMenuAction.importWebPhotos:
+        await _importWebPhotos();
         break;
       case _HomeMenuAction.metadataSync:
         await _runMetadataSync();
@@ -309,6 +329,15 @@ class _HomeScreenState extends State<HomeScreen> {
     return _keptPhotos.where((item) => item.tags.isNotEmpty).toList();
   }
   Future<void> _runMetadataSync() async {
+    if (kIsWeb) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('웹 브라우저 환경에서는 웹드라이브(Google/OneDrive)를 통해 안전하게 정리됩니다.'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
     final candidates = _metadataSyncCandidates();
     final preview = _metadataSyncService.dryRun(candidates);
     final confirmed = await showMetadataSyncConfirmDialog(
@@ -353,6 +382,11 @@ class _HomeScreenState extends State<HomeScreen> {
         title: const Text('Nostalgia'),
         actions: [
           IconButton(
+            tooltip: '사진/iCloud 가져오기',
+            icon: const Icon(Icons.add_photo_alternate_outlined),
+            onPressed: () => unawaited(_importWebPhotos()),
+          ),
+          IconButton(
             tooltip: '웹드라이브 정리',
             icon: const Icon(Icons.cloud_sync_outlined),
             onPressed: () => unawaited(_openCloudDrive()),
@@ -363,16 +397,20 @@ class _HomeScreenState extends State<HomeScreen> {
             onSelected: (action) => unawaited(_onMenuSelected(action)),
             itemBuilder: (context) => const [
               PopupMenuItem<_HomeMenuAction>(
-                value: _HomeMenuAction.settings,
-                child: Text('설정'),
+                value: _HomeMenuAction.importWebPhotos,
+                child: Text('사진/iCloud 가져오기'),
+              ),
+              PopupMenuItem<_HomeMenuAction>(
+                value: _HomeMenuAction.cloudDrive,
+                child: Text('웹드라이브 정리'),
               ),
               PopupMenuItem<_HomeMenuAction>(
                 value: _HomeMenuAction.metadataSync,
                 child: Text('메타 동기화'),
               ),
               PopupMenuItem<_HomeMenuAction>(
-                value: _HomeMenuAction.cloudDrive,
-                child: Text('웹드라이브 정리'),
+                value: _HomeMenuAction.settings,
+                child: Text('설정'),
               ),
               PopupMenuItem<_HomeMenuAction>(
                 value: _HomeMenuAction.reload,
@@ -391,9 +429,17 @@ class _HomeScreenState extends State<HomeScreen> {
                 children: [
                   if (_isPermissionDenied)
                     MaterialBanner(
-                      content: const Text('갤러리 권한이 없어 예시 데이터로 진행합니다.'),
+                      content: Text(
+                        kIsWeb
+                            ? '웹 브라우저 환경입니다. [사진/iCloud 가져오기] 또는 [웹드라이브]를 통해 사진을 바로 정리할 수 있습니다.'
+                            : '갤러리 권한이 없어 예시 데이터로 진행합니다.',
+                      ),
                       actions: [
-                        TextButton(onPressed: PhotoManager.openSetting, child: const Text('설정 열기')),
+                        if (kIsWeb) ...[
+                          TextButton(onPressed: _importWebPhotos, child: const Text('사진/iCloud 가져오기')),
+                          TextButton(onPressed: _openCloudDrive, child: const Text('웹드라이브 열기')),
+                        ] else
+                          TextButton(onPressed: PhotoManager.openSetting, child: const Text('설정 열기')),
                       ],
                     ),
                   Wrap(

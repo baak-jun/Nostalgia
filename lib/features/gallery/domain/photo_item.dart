@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:photo_manager/photo_manager.dart';
 
 class PhotoItem {
@@ -9,6 +11,7 @@ class PhotoItem {
     required this.tags,
     this.sourcePath,
     this.asset,
+    this.imageBytes,
     this.isScreenshot = false,
     this.inReviewBin = false,
   });
@@ -20,6 +23,7 @@ class PhotoItem {
   final List<String> tags;
   final String? sourcePath;
   final AssetEntity? asset;
+  final Uint8List? imageBytes;
   final bool isScreenshot;
   final bool inReviewBin;
 
@@ -31,6 +35,7 @@ class PhotoItem {
     List<String>? tags,
     String? sourcePath,
     AssetEntity? asset,
+    Uint8List? imageBytes,
     bool? isScreenshot,
     bool? inReviewBin,
   }) {
@@ -42,6 +47,7 @@ class PhotoItem {
       tags: tags ?? this.tags,
       sourcePath: sourcePath ?? this.sourcePath,
       asset: asset ?? this.asset,
+      imageBytes: imageBytes ?? this.imageBytes,
       isScreenshot: isScreenshot ?? this.isScreenshot,
       inReviewBin: inReviewBin ?? this.inReviewBin,
     );

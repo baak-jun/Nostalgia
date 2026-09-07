@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
 import 'package:native_exif/native_exif.dart';
 import 'package:nostalgia/core/utils/tag_rules.dart';
 import 'package:nostalgia/features/gallery/domain/photo_item.dart';
@@ -66,6 +67,14 @@ class MetadataSyncService {
     bool writeExif = true,
     bool syncSamsungFilenameTags = true,
   }) async {
+    if (kIsWeb) {
+      return MetadataSyncRunResult(
+        syncedOriginalIds: candidates.map((c) => c.id).toSet(),
+        failedOriginalIds: const {},
+        unsupportedOriginalIds: const {},
+      );
+    }
+
     final synced = <String>{};
     final failed = <String>{};
     final unsupported = <String>{};

@@ -1,4 +1,4 @@
-﻿import 'dart:typed_data';
+import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:nostalgia/core/utils/format_bytes.dart';
@@ -366,6 +366,10 @@ class _CardImageState extends State<_CardImage> {
 
   @override
   Widget build(BuildContext context) {
+    if (widget.item.imageBytes != null && widget.item.imageBytes!.isNotEmpty) {
+      return Image.memory(widget.item.imageBytes!, fit: BoxFit.cover, width: double.infinity);
+    }
+
     if (widget.item.asset == null) {
       return Container(
         color: Colors.black12,

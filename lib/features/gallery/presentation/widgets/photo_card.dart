@@ -65,6 +65,13 @@ class _PhotoThumbnail extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (item.imageBytes != null && item.imageBytes!.isNotEmpty) {
+      return Image.memory(
+        item.imageBytes!,
+        fit: BoxFit.cover,
+      );
+    }
+
     if (item.asset == null) {
       return Container(
         color: Colors.black12,

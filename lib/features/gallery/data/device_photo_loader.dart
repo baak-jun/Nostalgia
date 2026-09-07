@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:nostalgia/features/gallery/data/gallery_load_result.dart';
 import 'package:nostalgia/features/gallery/data/mock_photo_data.dart';
 import 'package:nostalgia/features/gallery/domain/photo_item.dart';
@@ -7,11 +8,27 @@ class DevicePhotoLoader {
   const DevicePhotoLoader();
 
   Future<GalleryLoadResult> load({int limit = 1000}) async {
-    final permission = await PhotoManager.requestPermissionExtend();
-    if (!permission.hasAccess) {
+    if (kIsWeb) {
       return const GalleryLoadResult(
         photos: mockPhotos,
-        isPermissionDenied: true,
+        isPermissionDenied: false,
+        isUsingMockData: true,
+      );
+    }
+
+    try {
+      final permission = await PhotoManager.requestPermissionExtend();
+      if (!permission.hasAccess) {
+        return const GalleryLoadResult(
+          photos: mockPhotos,
+          isPermissionDenied: true,
+          isUsingMockData: true,
+        );
+      }
+    } catch (_) {
+      return const GalleryLoadResult(
+        photos: mockPhotos,
+        isPermissionDenied: false,
         isUsingMockData: true,
       );
     }

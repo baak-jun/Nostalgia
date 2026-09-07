@@ -41,6 +41,7 @@ dependencies:
   native_exif: ^0.6.1
   http: ^1.2.0
   crypto: ^3.0.3
+  file_picker: ^11.0.3
 
 dev_dependencies:
   flutter_test:
