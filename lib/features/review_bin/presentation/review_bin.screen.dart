@@ -51,20 +51,60 @@ class _ReviewBinScreenState extends State<ReviewBinScreen> {
     });
   }
 
-  Future<bool> _confirmDelete(int count) async {
+  Future<bool> _confirmDelete(int count, {int totalBytes = 0}) async {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: const Text('삭제하시겠습니까?'),
-        content: Text('$count개의 이미지를 삭제 목록으로 처리합니다.'),
+        icon: const Icon(Icons.warning_amber_rounded, color: Colors.red, size: 36),
+        title: const Text('정말 삭제하시겠습니까?'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              '선택한 $count개의 사진을 삭제 처리합니다.',
+              style: const TextStyle(fontWeight: FontWeight.bold),
+            ),
+            if (totalBytes > 0)
+              Padding(
+                padding: const EdgeInsets.only(top: 4),
+                child: Text('예상 확보 용량: ${formatBytes(totalBytes)}'),
+              ),
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: Colors.red.withAlpha(25),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.red.withAlpha(80)),
+              ),
+              child: const Row(
+                children: [
+                  Icon(Icons.info_outline, color: Colors.red, size: 18),
+                  SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      '삭제 후에는 보류함에서 복원할 수 없습니다. 중요한 사진이 포함되어 있는지 다시 한번 확인해 주세요.',
+                      style: TextStyle(fontSize: 12, color: Colors.redAccent),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(false),
             child: const Text('취소'),
           ),
           FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: Theme.of(context).colorScheme.error,
+              foregroundColor: Theme.of(context).colorScheme.onError,
+            ),
             onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: const Text('삭제'),
+            child: const Text('삭제 확정'),
           ),
         ],
       ),
@@ -132,7 +172,7 @@ class _ReviewBinScreenState extends State<ReviewBinScreen> {
                     onSelected: (action) {
                       if (action == _ReviewMenuAction.all) {
                         () async {
-                          final confirmed = await _confirmDelete(items.length);
+                          final confirmed = await _confirmDelete(items.length, totalBytes: totalBytes);
                           if (!confirmed || !mounted) return;
                           final ids = items.map((item) => item.id).toSet();
                           setState(() {
@@ -193,7 +233,10 @@ class _ReviewBinScreenState extends State<ReviewBinScreen> {
                   onPressed: hasSelection
                       ? () async {
                           final ids = {..._selectedIds};
-                          final confirmed = await _confirmDelete(ids.length);
+                          final selectedBytes = items
+                              .where((item) => ids.contains(item.id))
+                              .fold<int>(0, (sum, item) => sum + item.sizeBytes);
+                          final confirmed = await _confirmDelete(ids.length, totalBytes: selectedBytes);
                           if (!confirmed || !mounted) return;
                           widget.onDeleteSelected?.call(ids);
                           setState(() {

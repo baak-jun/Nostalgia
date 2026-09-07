@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:nostalgia/features/archive/presentation/archive.screen.dart';
 import 'package:nostalgia/features/gallery/domain/photo_item.dart';
@@ -40,7 +40,7 @@ void main() {
     expect(find.text('tagged-photo'), findsOneWidget);
     expect(find.text('untagged-photo'), findsOneWidget);
 
-    await tester.tap(find.text('미태그'));
+    await tester.tap(find.textContaining('미태그'));
     await tester.pumpAndSettle();
 
     expect(find.text('tagged-photo'), findsNothing);
@@ -56,7 +56,7 @@ void main() {
       ),
     );
 
-    await tester.tap(find.text('미태그'));
+    await tester.tap(find.textContaining('미태그'));
     await tester.pumpAndSettle();
 
     expect(find.text('tagged-photo'), findsNothing);

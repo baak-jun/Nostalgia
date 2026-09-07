@@ -6,7 +6,7 @@ import 'package:photo_manager/photo_manager.dart';
 class DevicePhotoLoader {
   const DevicePhotoLoader();
 
-  Future<GalleryLoadResult> load({int limit = 200}) async {
+  Future<GalleryLoadResult> load({int limit = 1000}) async {
     final permission = await PhotoManager.requestPermissionExtend();
     if (!permission.hasAccess) {
       return const GalleryLoadResult(

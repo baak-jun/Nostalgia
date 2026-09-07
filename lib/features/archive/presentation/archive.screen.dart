@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:nostalgia/core/utils/tag_rules.dart';
 import 'package:nostalgia/features/gallery/domain/photo_item.dart';
 import 'package:nostalgia/features/gallery/presentation/widgets/photo_card.dart';
@@ -26,7 +26,6 @@ class _ArchiveScreenState extends State<ArchiveScreen> {
       widget.photos.where((item) => !_locallyHiddenIds.contains(item.id)).toList();
   List<PhotoItem> get _untaggedPhotos =>
       _allPhotos.where((item) => !hasUserVisibleTags(item.tags)).toList();
-  List<PhotoItem> get _filteredPhotos => _filter == ArchiveFilter.all ? _allPhotos : _untaggedPhotos;
 
   Future<void> _showItemMenu(PhotoItem item) async {
     if (widget.onPhotoLongPress == null) return;

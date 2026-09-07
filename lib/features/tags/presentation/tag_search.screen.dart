@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:nostalgia/core/utils/tag_rules.dart';
 import 'package:nostalgia/features/gallery/domain/photo_item.dart';
 import 'package:nostalgia/features/gallery/presentation/widgets/photo_card.dart';
@@ -115,8 +115,8 @@ class _TagSearchScreenState extends State<TagSearchScreen> {
   Set<String> _currentTokens() {
     return query
         .toLowerCase()
-        .split(',')
-        .map((value) => value.trim())
+        .split(RegExp(r'[\s,]+'))
+        .map((value) => value.replaceAll('#', '').trim())
         .where((value) => value.isNotEmpty)
         .toSet();
   }

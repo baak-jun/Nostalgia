@@ -1,4 +1,4 @@
-﻿import 'dart:async';
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:nostalgia/features/gallery/data/device_photo_loader.dart';
 import 'package:nostalgia/features/gallery/domain/photo_item.dart';
@@ -12,11 +12,13 @@ import 'package:nostalgia/features/sync/presentation/metadata_sync_dialogs.dart'
 import 'package:nostalgia/features/tags/presentation/widgets/tag_editor_dialog.dart';
 import 'package:photo_manager/photo_manager.dart';
 import 'package:nostalgia/core/utils/tag_rules.dart';
+import 'package:nostalgia/features/cloud/data/cloud_drive_repository.dart';
+import 'package:nostalgia/features/cloud/presentation/cloud_drive_screen.dart';
 enum SortOrder { oldestFirst, newestFirst }
 
 enum _SwipeAction { keep, defer, skip }
 
-enum _HomeMenuAction { settings, metadataSync, reload }
+enum _HomeMenuAction { settings, metadataSync, cloudDrive, reload }
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
   @override
@@ -26,6 +28,7 @@ class _HomeScreenState extends State<HomeScreen> {
   final DevicePhotoLoader _loader = const DevicePhotoLoader();
   final HomeStateStore _stateStore = const HomeStateStore();
   final MetadataSyncService _metadataSyncService = const MetadataSyncService();
+  final CloudDriveRepository _cloudRepository = CloudDriveRepository();
   bool _isLoading = true;
   bool _isPermissionDenied = false;
   AppSettings _settings = const AppSettings();
@@ -276,10 +279,23 @@ class _HomeScreenState extends State<HomeScreen> {
       case _HomeMenuAction.metadataSync:
         await _runMetadataSync();
         break;
+      case _HomeMenuAction.cloudDrive:
+        await _openCloudDrive();
+        break;
       case _HomeMenuAction.reload:
         await _loadPhotos();
         break;
     }
+  }
+  Future<void> _openCloudDrive() async {
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => CloudDriveScreen(
+          repository: _cloudRepository,
+          settings: _settings,
+        ),
+      ),
+    );
   }
   List<PhotoItem> _metadataSyncCandidates() {
     return _keptPhotos.where((item) => item.tags.isNotEmpty).toList();
@@ -287,14 +303,23 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<void> _runMetadataSync() async {
     final candidates = _metadataSyncCandidates();
     final preview = _metadataSyncService.dryRun(candidates);
-    final confirmed = await showMetadataSyncConfirmDialog(context, preview: preview);
+    final confirmed = await showMetadataSyncConfirmDialog(
+      context,
+      preview: preview,
+      syncSamsungFilename: _settings.syncSamsungFilenameTags,
+      writeExif: _settings.writeExifMetadata,
+    );
     if (!mounted || !confirmed) return;
-    final result = await _metadataSyncService.syncToMetadata(candidates);
+    final result = await _metadataSyncService.syncToMetadata(
+      candidates,
+      syncSamsungFilenameTags: _settings.syncSamsungFilenameTags,
+      writeExif: _settings.writeExifMetadata,
+    );
     if (!mounted) return;
     setState(() {
       for (final originalId in result.syncedOriginalIds) {
-        _keptIds.remove(originalId);
-        _deferredIds.add(originalId);
+        _keptIds.add(originalId);
+        _deferredIds.remove(originalId);
       }
     });
     await _savePersistedState();
@@ -319,6 +344,11 @@ class _HomeScreenState extends State<HomeScreen> {
       appBar: AppBar(
         title: const Text('Nostalgia'),
         actions: [
+          IconButton(
+            tooltip: '웹드라이브 정리',
+            icon: const Icon(Icons.cloud_sync_outlined),
+            onPressed: () => unawaited(_openCloudDrive()),
+          ),
           PopupMenuButton<_HomeMenuAction>(
             tooltip: '메뉴',
             icon: const Icon(Icons.menu),
@@ -331,6 +361,10 @@ class _HomeScreenState extends State<HomeScreen> {
               PopupMenuItem<_HomeMenuAction>(
                 value: _HomeMenuAction.metadataSync,
                 child: Text('메타 동기화'),
+              ),
+              PopupMenuItem<_HomeMenuAction>(
+                value: _HomeMenuAction.cloudDrive,
+                child: Text('웹드라이브 정리'),
               ),
               PopupMenuItem<_HomeMenuAction>(
                 value: _HomeMenuAction.reload,
@@ -380,10 +414,10 @@ class _HomeScreenState extends State<HomeScreen> {
                         style: ButtonStyle(
                           visualDensity: VisualDensity.compact,
                           tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                          textStyle: MaterialStatePropertyAll<TextStyle>(
+                          textStyle: WidgetStatePropertyAll<TextStyle>(
                             Theme.of(context).textTheme.labelSmall ?? const TextStyle(fontSize: 12),
                           ),
-                          padding: const MaterialStatePropertyAll<EdgeInsets>(
+                          padding: const WidgetStatePropertyAll<EdgeInsets>(
                             EdgeInsets.symmetric(horizontal: 8, vertical: 6),
                           ),
                         ),

@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:nostalgia/features/gallery/domain/photo_item.dart';
 import 'package:nostalgia/features/tags/presentation/tag_search.screen.dart';
@@ -31,9 +31,9 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.widgetWithText(ActionChip, '#여행'), findsOneWidget);
-    expect(find.widgetWithText(ActionChip, '#가족'), findsOneWidget);
-    expect(find.widgetWithText(ActionChip, '#nostalgia'), findsNothing);
+    expect(find.widgetWithText(FilterChip, '#여행'), findsOneWidget);
+    expect(find.widgetWithText(FilterChip, '#가족'), findsOneWidget);
+    expect(find.widgetWithText(FilterChip, '#nostalgia'), findsNothing);
     expect(find.text('#영수증'), findsNothing);
   });
 }
