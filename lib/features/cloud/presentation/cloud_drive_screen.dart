@@ -36,6 +36,31 @@ class _CloudDriveScreenState extends State<CloudDriveScreen> with SingleTickerPr
   final Set<String> _deferredIds = {};
   final Map<String, List<String>> _tagsByFileId = {};
   List<String> _lastAppliedTags = [];
+  final Map<String, Uint8List> _thumbnailCache = {};
+  final Set<String> _loadingThumbnailIds = {};
+
+  void _preloadThumbnails() {
+    final remaining = _remainingPhotos.take(4).toList();
+    for (final item in remaining) {
+      if (!_thumbnailCache.containsKey(item.id) && !_loadingThumbnailIds.contains(item.id)) {
+        _loadingThumbnailIds.add(item.id);
+        widget.repository.fetchThumbnail(_currentType, item.id, url: item.thumbnailUrl).then((bytes) {
+          if (mounted && bytes != null && bytes.isNotEmpty) {
+            setState(() {
+              _thumbnailCache[item.id] = bytes;
+              _loadingThumbnailIds.remove(item.id);
+            });
+          } else if (mounted) {
+            _loadingThumbnailIds.remove(item.id);
+          }
+        }).catchError((_) {
+          if (mounted) {
+            _loadingThumbnailIds.remove(item.id);
+          }
+        });
+      }
+    }
+  }
 
   @override
   void initState() {
@@ -78,6 +103,7 @@ class _CloudDriveScreenState extends State<CloudDriveScreen> with SingleTickerPr
       }
       _isLoading = false;
     });
+    _preloadThumbnails();
   }
 
   List<CloudFileItem> get _remainingPhotos {
@@ -358,7 +384,10 @@ class _CloudDriveScreenState extends State<CloudDriveScreen> with SingleTickerPr
                       itemCount: currentDeferred.length,
                       itemBuilder: (_, idx) {
                         final item = currentDeferred[idx];
-                        return PhotoCard(item: item.toPhotoItem(headers: _currentAuthHeaders));
+                        return PhotoCard(item: item.toPhotoItem(
+                          thumbnailBytes: _thumbnailCache[item.id],
+                          headers: _currentAuthHeaders,
+                        ));
                       },
                     ),
                   ),
@@ -439,6 +468,12 @@ class _CloudDriveScreenState extends State<CloudDriveScreen> with SingleTickerPr
     final isConnected = widget.repository.isConnected(_currentType);
     final remaining = _remainingPhotos;
     final current = remaining.isEmpty ? null : remaining.first;
+
+    if (current != null && !_thumbnailCache.containsKey(current.id) && !_loadingThumbnailIds.contains(current.id)) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _preloadThumbnails();
+      });
+    }
 
     final processedCount = _keptIds.length + _deferredIds.length;
     final totalCount = _cloudPhotos.length;
@@ -568,7 +603,10 @@ class _CloudDriveScreenState extends State<CloudDriveScreen> with SingleTickerPr
                             key: ValueKey<String>('cloud_swipe_${current.id}'),
                             item: current
                                 .copyWith(tags: _tagsByFileId[current.id] ?? current.tags)
-                                .toPhotoItem(headers: _currentAuthHeaders),
+                                .toPhotoItem(
+                                  thumbnailBytes: _thumbnailCache[current.id],
+                                  headers: _currentAuthHeaders,
+                                ),
                             onSwipeLeft: () => _classifyCurrent(false),
                             onSwipeRight: () => _classifyCurrent(true),
                             onSwipeUp: _copyPreviousTagsAndKeep,

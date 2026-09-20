@@ -195,25 +195,34 @@ class GoogleDriveClient implements ICloudDriveService {
   @override
   Future<Uint8List?> fetchThumbnail(String fileId, {String? url}) async {
     if (url != null && url.isNotEmpty) {
-      // 1. Try high-res (=s800) with OAuth headers
-      final highResUrl = url.replaceAll(RegExp(r'=s\d+$'), '=s800');
+      final highResUrl = url.contains('=s')
+          ? url.replaceAll(RegExp(r'=s\d+$'), '=s800')
+          : '$url=s800';
+
+      // 1. Try high-res without auth header (lh3 cdn public token)
       try {
-        final res = await _httpClient.get(Uri.parse(highResUrl), headers: _headers);
-        if (res.statusCode == 200) return res.bodyBytes;
+        final res = await _httpClient.get(Uri.parse(highResUrl));
+        if (res.statusCode == 200 && res.bodyBytes.isNotEmpty) return res.bodyBytes;
       } catch (_) {}
 
-      // 2. Try direct thumbnail url without auth header (lh3 cdn public token)
+      // 2. Try high-res with OAuth headers
+      try {
+        final res = await _httpClient.get(Uri.parse(highResUrl), headers: _headers);
+        if (res.statusCode == 200 && res.bodyBytes.isNotEmpty) return res.bodyBytes;
+      } catch (_) {}
+
+      // 3. Try original url without auth header
       try {
         final res = await _httpClient.get(Uri.parse(url));
-        if (res.statusCode == 200) return res.bodyBytes;
+        if (res.statusCode == 200 && res.bodyBytes.isNotEmpty) return res.bodyBytes;
       } catch (_) {}
     }
 
-    // 3. Fallback to direct media stream from Google Drive API
+    // 4. Fallback to direct media stream from Google Drive API
     try {
       final downloadUri = Uri.parse('$_baseUrl/files/$fileId?alt=media');
       final res = await _httpClient.get(downloadUri, headers: _headers);
-      if (res.statusCode == 200) return res.bodyBytes;
+      if (res.statusCode == 200 && res.bodyBytes.isNotEmpty) return res.bodyBytes;
     } catch (_) {}
     return null;
   }
