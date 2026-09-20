@@ -195,13 +195,26 @@ class GoogleDriveClient implements ICloudDriveService {
   @override
   Future<Uint8List?> fetchThumbnail(String fileId, {String? url}) async {
     if (url != null && url.isNotEmpty) {
-      final res = await _httpClient.get(Uri.parse(url), headers: _headers);
-      if (res.statusCode == 200) return res.bodyBytes;
+      // 1. Try high-res (=s800) with OAuth headers
+      final highResUrl = url.replaceAll(RegExp(r'=s\d+$'), '=s800');
+      try {
+        final res = await _httpClient.get(Uri.parse(highResUrl), headers: _headers);
+        if (res.statusCode == 200) return res.bodyBytes;
+      } catch (_) {}
+
+      // 2. Try direct thumbnail url without auth header (lh3 cdn public token)
+      try {
+        final res = await _httpClient.get(Uri.parse(url));
+        if (res.statusCode == 200) return res.bodyBytes;
+      } catch (_) {}
     }
 
-    final downloadUri = Uri.parse('$_baseUrl/files/$fileId?alt=media');
-    final res = await _httpClient.get(downloadUri, headers: _headers);
-    if (res.statusCode == 200) return res.bodyBytes;
+    // 3. Fallback to direct media stream from Google Drive API
+    try {
+      final downloadUri = Uri.parse('$_baseUrl/files/$fileId?alt=media');
+      final res = await _httpClient.get(downloadUri, headers: _headers);
+      if (res.statusCode == 200) return res.bodyBytes;
+    } catch (_) {}
     return null;
   }
 

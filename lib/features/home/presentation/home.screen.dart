@@ -241,6 +241,20 @@ class _HomeScreenState extends State<HomeScreen> {
       }
     });
     await _savePersistedState();
+
+    if (!kIsWeb) {
+      try {
+        final assetIds = _photos
+            .where((p) => ids.contains(p.id) && p.asset != null)
+            .map((p) => p.id)
+            .toList();
+        if (assetIds.isNotEmpty) {
+          await PhotoManager.editor.deleteWithIds(assetIds);
+        }
+      } catch (_) {
+        // Platform channel fallback / denial handled safely
+      }
+    }
   }
   Future<void> _deleteAllDeferred() => _deleteDeferredByIds({..._deferredIds});
 
