@@ -68,7 +68,7 @@ class _SwipeClassificationCardState extends State<SwipeClassificationCard> {
           : _SwipeActionVisual.defer(widget.isColorBlindMode);
     }
 
-    return _SwipeActionVisual.skip();
+    return _SwipeActionVisual.copyTags();
   }
 
   void _handlePanEnd() {
@@ -194,10 +194,10 @@ class _SwipeClassificationCardState extends State<SwipeClassificationCard> {
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Icon(Icons.fast_forward_outlined, color: Colors.white),
+                          Icon(Icons.copy_all_rounded, color: Colors.white),
                           SizedBox(width: 8),
                           Text(
-                            '아래로 스킵',
+                            '동일 태그 복사',
                             style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
                           ),
                         ],
@@ -214,10 +214,10 @@ class _SwipeClassificationCardState extends State<SwipeClassificationCard> {
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Icon(Icons.fast_forward_outlined, color: Colors.white),
+                          Icon(Icons.copy_all_rounded, color: Colors.white),
                           SizedBox(width: 8),
                           Text(
-                            '위로 스킵',
+                            '동일 태그 복사',
                             style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
                           ),
                         ],
@@ -321,11 +321,11 @@ class _SwipeActionVisual {
     leadingIcon: false,
   );
 
-  factory _SwipeActionVisual.skip() => const _SwipeActionVisual(
-    backgroundColor: Color(0xFF6B6B6B),
+  factory _SwipeActionVisual.copyTags() => const _SwipeActionVisual(
+    backgroundColor: Color(0xFF673AB7),
     alignment: Alignment.center,
-    icon: Icons.fast_forward_outlined,
-    label: '\uC2A4\uD0B5',
+    icon: Icons.copy_all_rounded,
+    label: '동일 태그 복사',
     leadingIcon: true,
   );
 }

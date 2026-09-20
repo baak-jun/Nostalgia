@@ -18,7 +18,7 @@ import 'package:nostalgia/features/cloud/data/cloud_drive_repository.dart';
 import 'package:nostalgia/features/cloud/presentation/cloud_drive_screen.dart';
 enum SortOrder { oldestFirst, newestFirst }
 
-enum _SwipeAction { keep, defer, skip }
+enum _SwipeAction { keep, defer, copyTags }
 
 enum _HomeMenuAction { settings, metadataSync, cloudDrive, importWebPhotos, reload }
 class HomeScreen extends StatefulWidget {
@@ -42,6 +42,7 @@ class _HomeScreenState extends State<HomeScreen> {
   final Set<String> _deletedIds = <String>{};
   final Set<String> _skippedIds = <String>{};
   final Map<String, Set<String>> _customTagsByPhotoId = <String, Set<String>>{};
+  Set<String> _lastAppliedTags = <String>{};
   @override
   void initState() {
     super.initState();
@@ -123,12 +124,47 @@ class _HomeScreenState extends State<HomeScreen> {
   void _classifyCurrent(_SwipeAction action) {
     final current = _remainingSorted.isEmpty ? null : _remainingSorted.first;
     if (current == null) return;
+
+    if (action == _SwipeAction.copyTags) {
+      if (_lastAppliedTags.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('이전에 사용한 태그가 없습니다. [태그 붙이기]를 먼저 진행해주세요.'),
+            behavior: SnackBarBehavior.floating,
+            duration: Duration(seconds: 2),
+          ),
+        );
+        return;
+      }
+
+      setState(() {
+        _customTagsByPhotoId[current.id] = Set.from(_lastAppliedTags);
+        _deletedIds.remove(current.id);
+        _keptIds.add(current.id);
+        _deferredIds.remove(current.id);
+        _skippedIds.remove(current.id);
+      });
+      unawaited(_savePersistedState());
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('이전 태그 [${_lastAppliedTags.map((t) => '#$t').join(' ')}] 적용 및 보관 완료'),
+          behavior: SnackBarBehavior.floating,
+          duration: const Duration(milliseconds: 1400),
+        ),
+      );
+      return;
+    }
+
     setState(() {
       if (action == _SwipeAction.keep) {
         _deletedIds.remove(current.id);
         _keptIds.add(current.id);
         _deferredIds.remove(current.id);
         _skippedIds.remove(current.id);
+        final currentTags = _customTagsByPhotoId[current.id] ?? current.tags.map(_normalizeTag).toSet();
+        if (currentTags.isNotEmpty) {
+          _lastAppliedTags = Set.from(currentTags);
+        }
       } else if (action == _SwipeAction.defer) {
         _deletedIds.remove(current.id);
         _deferredIds.add(current.id);
@@ -190,6 +226,9 @@ class _HomeScreenState extends State<HomeScreen> {
     }
     setState(() {
       _customTagsByPhotoId[item.id] = updatedTags;
+      if (updatedTags.isNotEmpty) {
+        _lastAppliedTags = Set.from(updatedTags);
+      }
       _deletedIds.remove(item.id);
       if (forceKeepAfterSave) {
         _keptIds.add(item.id);
@@ -502,14 +541,14 @@ class _HomeScreenState extends State<HomeScreen> {
                             item: current,
                             onSwipeLeft: () => _classifyCurrent(_SwipeAction.defer),
                             onSwipeRight: () => _classifyCurrent(_SwipeAction.keep),
-                            onSwipeUp: () => _classifyCurrent(_SwipeAction.skip),
-                            onSwipeDown: () => _classifyCurrent(_SwipeAction.skip),
+                            onSwipeUp: () => _classifyCurrent(_SwipeAction.copyTags),
+                            onSwipeDown: () => _classifyCurrent(_SwipeAction.copyTags),
                             isColorBlindMode: _settings.isColorBlindMode,
                             swipeSensitivity: _settings.swipeSensitivity,
                           ),
                   ),
                   const SizedBox(height: 12),
-                  const Text('왼쪽: 보류함  |  오른쪽: 보관  |  위/아래: 스킵', textAlign: TextAlign.center),
+                  const Text('왼쪽: 보류함  |  오른쪽: 보관  |  위/아래: 이전 태그 복사', textAlign: TextAlign.center),
                   const SizedBox(height: 10),
                   OutlinedButton.icon(
                     onPressed: current == null ? null : _tagCurrent,

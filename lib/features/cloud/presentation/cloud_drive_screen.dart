@@ -34,8 +34,8 @@ class _CloudDriveScreenState extends State<CloudDriveScreen> with SingleTickerPr
 
   final Set<String> _keptIds = {};
   final Set<String> _deferredIds = {};
-  final Set<String> _skippedIds = {};
   final Map<String, List<String>> _tagsByFileId = {};
+  List<String> _lastAppliedTags = [];
 
   @override
   void initState() {
@@ -72,6 +72,9 @@ class _CloudDriveScreenState extends State<CloudDriveScreen> with SingleTickerPr
         if (p.inReviewBin) {
           _deferredIds.add(p.id);
         }
+        if (p.tags.isNotEmpty && _lastAppliedTags.isEmpty) {
+          _lastAppliedTags = List.from(p.tags);
+        }
       }
       _isLoading = false;
     });
@@ -102,6 +105,10 @@ class _CloudDriveScreenState extends State<CloudDriveScreen> with SingleTickerPr
       if (isKeep) {
         _keptIds.add(current.id);
         _deferredIds.remove(current.id);
+        final currentTags = _tagsByFileId[current.id] ?? current.tags;
+        if (currentTags.isNotEmpty) {
+          _lastAppliedTags = List.from(currentTags);
+        }
       } else {
         _deferredIds.add(current.id);
         _keptIds.remove(current.id);
@@ -110,16 +117,38 @@ class _CloudDriveScreenState extends State<CloudDriveScreen> with SingleTickerPr
     });
   }
 
-  void _skipCurrent() {
+  void _copyPreviousTagsAndKeep() {
     final remaining = _remainingPhotos;
     if (remaining.isEmpty) return;
     final current = remaining.first;
+
+    if (_lastAppliedTags.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('이전에 사용한 태그가 없습니다. [태그 달기]를 먼저 진행해주세요.'),
+          behavior: SnackBarBehavior.floating,
+          duration: Duration(seconds: 2),
+        ),
+      );
+      return;
+    }
+
+    final appliedTags = List<String>.from(_lastAppliedTags)..sort();
     setState(() {
-      _skippedIds.add(current.id);
-      // Rotate skipped item to end
-      _cloudPhotos.remove(current);
-      _cloudPhotos.add(current);
+      _tagsByFileId[current.id] = appliedTags;
+      _keptIds.add(current.id);
+      _deferredIds.remove(current.id);
     });
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('이전 태그 [${appliedTags.map((t) => '#$t').join(' ')}] 적용 및 보관 완료'),
+        behavior: SnackBarBehavior.floating,
+        duration: const Duration(milliseconds: 1400),
+      ),
+    );
+
+    widget.repository.updateTags(_currentType, current.id, appliedTags);
   }
 
   Future<void> _editCurrentTags() async {
@@ -144,6 +173,9 @@ class _CloudDriveScreenState extends State<CloudDriveScreen> with SingleTickerPr
     if (!mounted || updatedTags == null) return;
     setState(() {
       _tagsByFileId[current.id] = updatedTags.toList()..sort();
+      if (updatedTags.isNotEmpty) {
+        _lastAppliedTags = updatedTags.toList()..sort();
+      }
       _keptIds.add(current.id);
       _deferredIds.remove(current.id);
     });
@@ -539,8 +571,8 @@ class _CloudDriveScreenState extends State<CloudDriveScreen> with SingleTickerPr
                                 .toPhotoItem(headers: _currentAuthHeaders),
                             onSwipeLeft: () => _classifyCurrent(false),
                             onSwipeRight: () => _classifyCurrent(true),
-                            onSwipeUp: _skipCurrent,
-                            onSwipeDown: _skipCurrent,
+                            onSwipeUp: _copyPreviousTagsAndKeep,
+                            onSwipeDown: _copyPreviousTagsAndKeep,
                             isColorBlindMode: widget.settings.isColorBlindMode,
                             swipeSensitivity: widget.settings.swipeSensitivity,
                           ),
@@ -557,9 +589,9 @@ class _CloudDriveScreenState extends State<CloudDriveScreen> with SingleTickerPr
                         icon: const Icon(Icons.delete_outline),
                       ),
                       IconButton.filledTonal(
-                        onPressed: current == null ? null : _skipCurrent,
-                        tooltip: '스킵 (상하 스와이프)',
-                        icon: const Icon(Icons.fast_forward_outlined),
+                        onPressed: current == null ? null : _copyPreviousTagsAndKeep,
+                        tooltip: '이전 태그 복사 (상하 스와이프)',
+                        icon: const Icon(Icons.copy_all_outlined),
                       ),
                       FilledButton.icon(
                         onPressed: current == null ? null : _editCurrentTags,
