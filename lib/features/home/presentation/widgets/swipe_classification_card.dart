@@ -370,6 +370,53 @@ class _CardImageState extends State<_CardImage> {
       return Image.memory(widget.item.imageBytes!, fit: BoxFit.cover, width: double.infinity);
     }
 
+    if (widget.item.imageUrl != null && widget.item.imageUrl!.isNotEmpty) {
+      return Image.network(
+        widget.item.imageUrl!,
+        headers: widget.item.imageHeaders,
+        fit: BoxFit.cover,
+        width: double.infinity,
+        loadingBuilder: (context, child, loadingProgress) {
+          if (loadingProgress == null) return child;
+          final total = loadingProgress.expectedTotalBytes;
+          final loaded = loadingProgress.cumulativeBytesLoaded;
+          return Container(
+            color: Colors.black12,
+            alignment: Alignment.center,
+            child: SizedBox(
+              width: 36,
+              height: 36,
+              child: CircularProgressIndicator(
+                value: total != null && total > 0 ? loaded / total : null,
+                strokeWidth: 3,
+              ),
+            ),
+          );
+        },
+        errorBuilder: (context, error, stackTrace) {
+          return Container(
+            color: Colors.black12,
+            alignment: Alignment.center,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  widget.item.isScreenshot ? Icons.screenshot_monitor : Icons.photo,
+                  size: 56,
+                  color: Colors.grey,
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  '이미지를 불러올 수 없습니다',
+                  style: TextStyle(fontSize: 12, color: Colors.grey),
+                ),
+              ],
+            ),
+          );
+        },
+      );
+    }
+
     if (widget.item.asset == null) {
       return Container(
         color: Colors.black12,

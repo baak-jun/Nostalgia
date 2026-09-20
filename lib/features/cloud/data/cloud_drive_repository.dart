@@ -58,6 +58,7 @@ class CloudDriveRepository {
         modifiedTime: DateTime(2026, 2, 10, 18, 30),
         driveType: CloudDriveType.googleDrive,
         parentFolderName: 'Google Drive / 여행사진',
+        thumbnailUrl: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=800',
         tags: const ['여행', '바다', '노을'],
       ),
       CloudFileItem(
@@ -67,6 +68,7 @@ class CloudDriveRepository {
         modifiedTime: DateTime(2026, 2, 15, 14, 12),
         driveType: CloudDriveType.googleDrive,
         parentFolderName: 'Google Drive / 영수증',
+        thumbnailUrl: 'https://images.unsplash.com/photo-1554118811-1e0d58224f24?w=800',
         tags: const ['영수증', '카페'],
       ),
       CloudFileItem(
@@ -76,6 +78,7 @@ class CloudDriveRepository {
         modifiedTime: DateTime(2026, 2, 18, 12, 4),
         driveType: CloudDriveType.googleDrive,
         parentFolderName: 'Google Drive / 일상',
+        thumbnailUrl: 'https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?w=800',
         tags: const ['반려동물', '고양이'],
       ),
       CloudFileItem(
@@ -85,6 +88,7 @@ class CloudDriveRepository {
         modifiedTime: DateTime(2026, 2, 20, 9, 20),
         driveType: CloudDriveType.googleDrive,
         parentFolderName: 'Google Drive / 스크린샷',
+        thumbnailUrl: 'https://images.unsplash.com/photo-1474487548417-781cb71495f3?w=800',
         tags: const ['스크린샷'],
       ),
       CloudFileItem(
@@ -94,6 +98,7 @@ class CloudDriveRepository {
         modifiedTime: DateTime(2026, 1, 14, 19, 0),
         driveType: CloudDriveType.oneDrive,
         parentFolderName: 'OneDrive / Pictures',
+        thumbnailUrl: 'https://images.unsplash.com/photo-1511895426328-dc8714191300?w=800',
         tags: const ['가족', '행사'],
       ),
       CloudFileItem(
@@ -103,6 +108,7 @@ class CloudDriveRepository {
         modifiedTime: DateTime(2026, 2, 1, 11, 45),
         driveType: CloudDriveType.oneDrive,
         parentFolderName: 'OneDrive / Documents',
+        thumbnailUrl: 'https://images.unsplash.com/photo-1450133064473-71024230f91b?w=800',
         tags: const ['업무', '문서'],
       ),
       CloudFileItem(
@@ -112,6 +118,7 @@ class CloudDriveRepository {
         modifiedTime: DateTime(2026, 2, 22, 11, 10),
         driveType: CloudDriveType.oneDrive,
         parentFolderName: 'OneDrive / Pictures',
+        thumbnailUrl: 'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?w=800',
         tags: const ['풍경', '등산', '여행'],
       ),
       CloudFileItem(

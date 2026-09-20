@@ -12,6 +12,8 @@ class PhotoItem {
     this.sourcePath,
     this.asset,
     this.imageBytes,
+    this.imageUrl,
+    this.imageHeaders,
     this.isScreenshot = false,
     this.inReviewBin = false,
   });
@@ -24,6 +26,8 @@ class PhotoItem {
   final String? sourcePath;
   final AssetEntity? asset;
   final Uint8List? imageBytes;
+  final String? imageUrl;
+  final Map<String, String>? imageHeaders;
   final bool isScreenshot;
   final bool inReviewBin;
 
@@ -36,6 +40,8 @@ class PhotoItem {
     String? sourcePath,
     AssetEntity? asset,
     Uint8List? imageBytes,
+    String? imageUrl,
+    Map<String, String>? imageHeaders,
     bool? isScreenshot,
     bool? inReviewBin,
   }) {
@@ -48,6 +54,8 @@ class PhotoItem {
       sourcePath: sourcePath ?? this.sourcePath,
       asset: asset ?? this.asset,
       imageBytes: imageBytes ?? this.imageBytes,
+      imageUrl: imageUrl ?? this.imageUrl,
+      imageHeaders: imageHeaders ?? this.imageHeaders,
       isScreenshot: isScreenshot ?? this.isScreenshot,
       inReviewBin: inReviewBin ?? this.inReviewBin,
     );

@@ -72,6 +72,38 @@ class _PhotoThumbnail extends StatelessWidget {
       );
     }
 
+    if (item.imageUrl != null && item.imageUrl!.isNotEmpty) {
+      return Image.network(
+        item.imageUrl!,
+        headers: item.imageHeaders,
+        fit: BoxFit.cover,
+        width: double.infinity,
+        loadingBuilder: (context, child, loadingProgress) {
+          if (loadingProgress == null) return child;
+          return Container(
+            color: Colors.black12,
+            alignment: Alignment.center,
+            child: const SizedBox(
+              width: 20,
+              height: 20,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            ),
+          );
+        },
+        errorBuilder: (context, error, stackTrace) {
+          return Container(
+            color: Colors.black12,
+            alignment: Alignment.center,
+            child: Icon(
+              item.isScreenshot ? Icons.screenshot_monitor : Icons.photo,
+              size: 42,
+              color: Colors.grey,
+            ),
+          );
+        },
+      );
+    }
+
     if (item.asset == null) {
       return Container(
         color: Colors.black12,

@@ -106,7 +106,7 @@ class GoogleDriveClient implements ICloudDriveService {
         modifiedTime: DateTime.tryParse(f['modifiedTime'] as String? ?? '') ?? DateTime.now(),
         driveType: CloudDriveType.googleDrive,
         mimeType: f['mimeType'] as String? ?? 'image/jpeg',
-        thumbnailUrl: f['thumbnailLink'] as String?,
+        thumbnailUrl: (f['thumbnailLink'] as String?) ?? '$_baseUrl/files/${f['id']}?alt=media',
         webViewLink: f['webViewLink'] as String?,
         downloadUrl: f['webContentLink'] as String?,
         parentFolderId: (f['parents'] as List?)?.firstOrNull as String?,

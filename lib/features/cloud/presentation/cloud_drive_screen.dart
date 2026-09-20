@@ -85,6 +85,14 @@ class _CloudDriveScreenState extends State<CloudDriveScreen> with SingleTickerPr
     return _cloudPhotos.where((p) => _deferredIds.contains(p.id)).toList();
   }
 
+  Map<String, String>? get _currentAuthHeaders {
+    final account = widget.repository.getAccount(_currentType);
+    if (account?.accessToken.isNotEmpty == true) {
+      return {'Authorization': 'Bearer ${account!.accessToken}'};
+    }
+    return null;
+  }
+
   void _classifyCurrent(bool isKeep) {
     final remaining = _remainingPhotos;
     if (remaining.isEmpty) return;
@@ -318,7 +326,7 @@ class _CloudDriveScreenState extends State<CloudDriveScreen> with SingleTickerPr
                       itemCount: currentDeferred.length,
                       itemBuilder: (_, idx) {
                         final item = currentDeferred[idx];
-                        return PhotoCard(item: item.toPhotoItem());
+                        return PhotoCard(item: item.toPhotoItem(headers: _currentAuthHeaders));
                       },
                     ),
                   ),
@@ -526,7 +534,9 @@ class _CloudDriveScreenState extends State<CloudDriveScreen> with SingleTickerPr
                           )
                         : SwipeClassificationCard(
                             key: ValueKey<String>('cloud_swipe_${current.id}'),
-                            item: current.copyWith(tags: _tagsByFileId[current.id] ?? current.tags).toPhotoItem(),
+                            item: current
+                                .copyWith(tags: _tagsByFileId[current.id] ?? current.tags)
+                                .toPhotoItem(headers: _currentAuthHeaders),
                             onSwipeLeft: () => _classifyCurrent(false),
                             onSwipeRight: () => _classifyCurrent(true),
                             onSwipeUp: _skipCurrent,

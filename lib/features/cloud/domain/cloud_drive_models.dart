@@ -1,3 +1,4 @@
+import 'dart:typed_data';
 import 'package:nostalgia/features/gallery/domain/photo_item.dart';
 
 enum CloudDriveType {
@@ -172,7 +173,28 @@ class CloudFileItem {
     );
   }
 
-  PhotoItem toPhotoItem() {
+  PhotoItem toPhotoItem({Uint8List? thumbnailBytes, Map<String, String>? headers}) {
+    String? resolvedUrl = thumbnailUrl;
+    if (resolvedUrl != null && driveType == CloudDriveType.googleDrive) {
+      if (resolvedUrl.contains('=s')) {
+        resolvedUrl = resolvedUrl.replaceAll(RegExp(r'=s\d+$'), '=s800');
+      } else {
+        resolvedUrl = '$resolvedUrl=s800';
+      }
+    }
+
+    if (resolvedUrl == null && downloadUrl != null) {
+      resolvedUrl = downloadUrl;
+    }
+
+    // Google CDN handles signed URLs without headers; Google API and OneDrive require auth headers
+    Map<String, String>? resolvedHeaders;
+    if (resolvedUrl != null) {
+      if (driveType == CloudDriveType.oneDrive || resolvedUrl.contains('googleapis.com')) {
+        resolvedHeaders = headers;
+      }
+    }
+
     return PhotoItem(
       id: '${driveType.name}_$id',
       title: name,
@@ -181,6 +203,9 @@ class CloudFileItem {
       tags: tags,
       sourcePath: parentFolderName ?? driveType.displayName,
       asset: null,
+      imageBytes: thumbnailBytes,
+      imageUrl: resolvedUrl,
+      imageHeaders: resolvedHeaders,
       isScreenshot: name.toLowerCase().contains('screenshot') || name.toLowerCase().contains('screen'),
       inReviewBin: inReviewBin,
     );
