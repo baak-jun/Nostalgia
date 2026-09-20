@@ -147,8 +147,12 @@ class _CloudDriveScreenState extends State<CloudDriveScreen> with SingleTickerPr
         ? 'https://developers.google.com/oauthplayground/#step1&apisSelect=https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fdrive.readonly%2Chttps%3A%2F%2Fwww.googleapis.com%2Fauth%2Fdrive.file'
         : 'https://developer.microsoft.com/graph/graph-explorer';
     final uri = Uri.parse(url);
-    if (await canLaunchUrl(uri)) {
+    try {
       await launchUrl(uri, mode: LaunchMode.externalApplication);
+    } catch (_) {
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(uri);
+      }
     }
   }
 
