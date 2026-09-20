@@ -67,10 +67,11 @@ class _TagEditorDialogState extends State<TagEditorDialog> {
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
       content: SizedBox(
         width: 360,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
             // Selected Active Tags (# tag)
             if (sortedTags.isNotEmpty) ...[
               Wrap(
@@ -137,6 +138,7 @@ class _TagEditorDialogState extends State<TagEditorDialog> {
               ),
             ),
           ],
+        ),
         ),
       ),
       actions: [

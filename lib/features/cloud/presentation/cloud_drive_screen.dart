@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:nostalgia/core/utils/format_bytes.dart';
 import 'package:nostalgia/features/cloud/data/cloud_drive_repository.dart';
 import 'package:nostalgia/features/cloud/domain/cloud_drive_models.dart';
@@ -165,67 +166,80 @@ class _CloudDriveScreenState extends State<CloudDriveScreen> with SingleTickerPr
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         content: SizedBox(
           width: 420,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Text(
-                '${_currentType.displayName} 계정으로 로그인하여 사진을 가져옵니다.',
-                style: const TextStyle(fontSize: 14),
-              ),
-              const SizedBox(height: 12),
-              OutlinedButton.icon(
-                icon: const Icon(Icons.open_in_new, size: 18),
-                label: Text(
-                  _currentType == CloudDriveType.googleDrive
-                      ? '구글 로그인 & 토큰 발급 페이지 열기'
-                      : 'MS 로그인 & 토큰 발급 페이지 열기',
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(
+                  '${_currentType.displayName} 계정으로 로그인하여 사진을 가져옵니다.',
+                  style: const TextStyle(fontSize: 14),
                 ),
-                style: OutlinedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 12),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                const SizedBox(height: 12),
+                OutlinedButton.icon(
+                  icon: const Icon(Icons.open_in_new, size: 18),
+                  label: Text(
+                    _currentType == CloudDriveType.googleDrive
+                        ? '구글 로그인 & 토큰 발급 페이지 열기'
+                        : 'MS 로그인 & 토큰 발급 페이지 열기',
+                  ),
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                  onPressed: () => _openOAuthTokenPage(_currentType),
                 ),
-                onPressed: () => _openOAuthTokenPage(_currentType),
-              ),
-              const SizedBox(height: 10),
-              Container(
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: Theme.of(ctx).colorScheme.surfaceContainerHighest.withValues(alpha: 0.6),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      '⚡ 30초 발급 방법',
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 12,
-                        color: Theme.of(ctx).colorScheme.primary,
+                const SizedBox(height: 10),
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: Theme.of(ctx).colorScheme.surfaceContainerHighest.withValues(alpha: 0.6),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        '⚡ 30초 발급 방법',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 12,
+                          color: Theme.of(ctx).colorScheme.primary,
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      _currentType == CloudDriveType.googleDrive
-                          ? '1. 위 버튼 클릭 시 구글 OAuth Playground가 열립니다.\n2. [Authorize APIs] 클릭 후 본인 구글 계정 로그인\n3. [Exchange auth code] 클릭 후 나오는 Access Token 복사'
-                          : '1. 위 버튼 클릭 시 Graph Explorer가 열립니다.\n2. MS 계정 로그인 후 [Access token] 탭 클릭\n3. 표시된 토큰 복사 후 아래 붙여넣기',
-                      style: const TextStyle(fontSize: 12, height: 1.4),
-                    ),
-                  ],
+                      const SizedBox(height: 4),
+                      Text(
+                        _currentType == CloudDriveType.googleDrive
+                            ? '1. 위 버튼 클릭 시 구글 OAuth Playground가 열립니다.\n2. [Authorize APIs] 클릭 후 본인 구글 계정 로그인\n3. [Exchange auth code] 클릭 후 나오는 Access Token 복사'
+                            : '1. 위 버튼 클릭 시 Graph Explorer가 열립니다.\n2. MS 계정 로그인 후 [Access token] 탭 클릭\n3. 표시된 토큰 복사 후 아래 붙여넣기',
+                        style: const TextStyle(fontSize: 12, height: 1.4),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-              const SizedBox(height: 14),
-              TextField(
-                controller: tokenController,
-                decoration: InputDecoration(
-                  labelText: 'Access Token 붙여넣기',
-                  hintText: '비워두면 데모 드라이브로 연결됩니다',
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                const SizedBox(height: 14),
+                TextField(
+                  controller: tokenController,
+                  autofocus: false,
+                  decoration: InputDecoration(
+                    labelText: 'Access Token 붙여넣기',
+                    hintText: '비워두면 데모 드라이브로 연결됩니다',
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                    suffixIcon: IconButton(
+                      icon: const Icon(Icons.content_paste),
+                      tooltip: '클립보드에서 붙여넣기',
+                      onPressed: () async {
+                        final data = await Clipboard.getData(Clipboard.kTextPlain);
+                        if (data?.text != null && data!.text!.trim().isNotEmpty) {
+                          tokenController.text = data.text!.trim();
+                        }
+                      },
+                    ),
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
         actions: [
